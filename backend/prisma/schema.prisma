@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  email        String    @unique
+  name         String?
+  provider     String    // oauth provider name (google, apple, etc.)
+  providerId   String    // provider user id
+
+  currency     String    @default("USD")
+  simplified   Boolean   @default(true)
+  // Used for Safe to Spend Today: (monthlyBudgetAmount - spentThisMonth) / daysLeftInMonth
+  monthlyBudgetAmount Decimal?
+
+  accounts     Account[]
+  categories   Category[]
+  budgets      Budget[]
+  goals        Goal[]
+  transactions Transaction[]
+  coachPrompts CoachPrompt[]
+}
+
+model Account {
+  id        String       @id @default(cuid())
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  name      String
+  type      String       // e.g. CASH, BANK, CARD
+  balance   Decimal      @default(0)
+
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  transactions Transaction[]
+}
+
+model Category {
+  id        String       @id @default(cuid())
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  name      String
+  type      CategoryType
+  color     String       // hex color
+  icon      String?      // optional icon name
+  sortOrder Int          @default(0)
+
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  transactions Transaction[]
+  budgets      Budget[]
+}
+
+model Budget {
+  id          String       @id @default(cuid())
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  name        String
+  periodStart DateTime
+  periodEnd   DateTime
+  amount      Decimal
+
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  categoryId  String?
+  category    Category?    @relation(fields: [categoryId], references: [id])
+}
+
+model Transaction {
+  id        String       @id @default(cuid())
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  amount    Decimal
+  date      DateTime
+  note      String?
+  spendType SpendType    @default(PLANNED) // Planned or Impulsive — drives coach loop
+
+  accountId String
+  account   Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  categoryId String?
+  category   Category?   @relation(fields: [categoryId], references: [id])
+
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CoachPrompt {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  promptKey String   // e.g. "impulsive_reflection_1"
+  shownAt   DateTime @default(now())
+}
+
+model Goal {
+  id          String    @id @default(cuid())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  name        String
+  targetAmount Decimal
+  currentAmount Decimal @default(0)
+  targetDate   DateTime?
+
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum CategoryType {
+  INCOME
+  EXPENSE
+}
+
+enum SpendType {
+  PLANNED
+  IMPULSIVE
+}
+
