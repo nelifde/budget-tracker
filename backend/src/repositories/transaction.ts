@@ -60,6 +60,60 @@ export async function getImpulsiveCountSince(userId: string, since: Date): Promi
   });
 }
 
+export type CategoryImpulsiveCount = { categoryId: string; categoryName: string; count: number };
+
+/** Returns categories with at least minCount impulsive transactions since `since`. */
+export async function getImpulsiveCountByCategorySince(
+  userId: string,
+  since: Date,
+  minCount: number = 5
+): Promise<CategoryImpulsiveCount[]> {
+  const rows = await prisma.transaction.groupBy({
+    by: ["categoryId"],
+    where: {
+      userId,
+      spendType: SpendType.IMPULSIVE,
+      date: { gte: since },
+      categoryId: { not: null },
+    },
+    _count: { id: true },
+  });
+  const overThreshold = rows.filter((r) => r._count.id >= minCount);
+  if (overThreshold.length === 0) return [];
+  const categoryIds = overThreshold.map((r) => r.categoryId as string);
+  const categories = await prisma.category.findMany({
+    where: { id: { in: categoryIds } },
+    select: { id: true, name: true },
+  });
+  const nameMap = new Map(categories.map((c) => [c.id, c.name]));
+  return overThreshold.map((r) => ({
+    categoryId: r.categoryId as string,
+    categoryName: nameMap.get(r.categoryId as string) ?? "Uncategorized",
+    count: r._count.id,
+  }));
+}
+
+/** True if each of the last 7 calendar days has at least one impulsive transaction. */
+export async function hadImpulsiveEveryDayLast7(userId: string): Promise<boolean> {
+  const now = new Date();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - i);
+    d.setHours(0, 0, 0, 0);
+    const end = new Date(d);
+    end.setHours(23, 59, 59, 999);
+    const count = await prisma.transaction.count({
+      where: {
+        userId,
+        spendType: SpendType.IMPULSIVE,
+        date: { gte: d, lte: end },
+      },
+    });
+    if (count === 0) return false;
+  }
+  return true;
+}
+
 export async function createTransaction(data: {
   userId: string;
   accountId: string;

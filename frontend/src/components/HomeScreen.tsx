@@ -1,12 +1,13 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDrag } from "@use-gesture/react";
 import { motion, useSpring } from "framer-motion";
-import { useRef, useState } from "react";
-import { fetchSafeToSpend } from "@/lib/api";
+import { useEffect, useRef, useState } from "react";
+import { fetchCoachReflection, fetchSafeToSpend } from "@/lib/api";
 import { CoachBanner } from "./CoachBanner";
 import { NudgeBanner } from "./NudgeBanner";
+import { ReflectionLogSheet } from "./ReflectionLogSheet";
 
 type Props = {
 	onPullToAdd: () => void;
@@ -44,12 +45,39 @@ export function HomeScreen({
 	const [demoMode, setDemoMode] = useState(false);
 	const [coachMessage, setCoachMessage] = useState<string | null>(null);
 	const [nudgeMessage, setNudgeMessage] = useState<string | null>(null);
+	const [coachBannerDismissed, setCoachBannerDismissed] = useState(false);
+	const [reflectionDismissed, setReflectionDismissed] = useState(false);
+	const queryClient = useQueryClient();
 
 	const { data: summary, isLoading } = useQuery({
 		queryKey: ["safe-to-spend"],
 		queryFn: () => fetchSafeToSpend(),
 		refetchOnWindowFocus: true,
 	});
+
+	const { data: coachData } = useQuery({
+		queryKey: ["coach-reflection"],
+		queryFn: fetchCoachReflection,
+		enabled: !demoMode,
+	});
+
+	const showReflectionSheet =
+		!demoMode &&
+		!!coachData?.prompt &&
+		!!coachData?.requestFeelingLog &&
+		!reflectionDismissed;
+
+	useEffect(() => {
+		if (coachData?.prompt && coachData?.requestFeelingLog) {
+			setReflectionDismissed(false);
+		}
+	}, [coachData?.prompt, coachData?.requestFeelingLog]);
+
+	const coachBannerMessage = demoMode
+		? coachMessage
+		: coachData?.prompt && !coachData?.requestFeelingLog && !coachBannerDismissed
+			? coachData.prompt
+			: null;
 
 	const safeToSpend = demoMode ? 12.5 : (summary?.safeToSpendToday ?? null);
 	const xpPercent = demoMode ? 18 : (summary?.xpPercent ?? 100);
@@ -134,6 +162,8 @@ export function HomeScreen({
 							} else {
 								setCoachMessage(null);
 								setNudgeMessage(null);
+								setCoachBannerDismissed(false);
+								setReflectionDismissed(false);
 							}
 						}}
 						className="px-3 py-2 rounded-lg bg-[var(--bg-secondary)] text-[var(--text-secondary)] font-display text-xs font-bold min-tap"
@@ -143,8 +173,25 @@ export function HomeScreen({
 				</div>
 
 				<CoachBanner
-					message={coachMessage}
-					onDismiss={() => setCoachMessage(null)}
+					message={coachBannerMessage}
+					onDismiss={() => {
+						if (demoMode) setCoachMessage(null);
+						else setCoachBannerDismissed(true);
+					}}
+				/>
+				<ReflectionLogSheet
+					open={showReflectionSheet}
+					onClose={() => {
+						setReflectionDismissed(true);
+						queryClient.invalidateQueries({ queryKey: ["coach-reflection"] });
+					}}
+					promptMessage={coachData?.prompt ?? ""}
+					categoryName={coachData?.categoryName}
+					categoryId={coachData?.categoryId}
+					onSubmitted={() => {
+						setReflectionDismissed(true);
+						queryClient.invalidateQueries({ queryKey: ["coach-reflection"] });
+					}}
 				/>
 				<NudgeBanner
 					message={nudgeMessage}

@@ -28,6 +28,7 @@ model User {
   goals        Goal[]
   transactions Transaction[]
   coachPrompts CoachPrompt[]
+  reflections   Reflection[]
 }
 
 model Account {
@@ -61,6 +62,7 @@ model Category {
 
   transactions Transaction[]
   budgets      Budget[]
+  reflections  Reflection[]
 }
 
 model Budget {
@@ -106,6 +108,17 @@ model CoachPrompt {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   promptKey String   // e.g. "impulsive_reflection_1"
   shownAt   DateTime @default(now())
+}
+
+model Reflection {
+  id         String    @id @default(cuid())
+  createdAt  DateTime  @default(now())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feelingKey String    // e.g. anxious, guilty, relieved, fine, not_sure
+  reasonKey  String    // e.g. stressed, bored, with_friends, saw_deal, not_sure
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 }
 
 model Goal {

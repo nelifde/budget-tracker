@@ -136,6 +136,50 @@ export async function deleteTransaction(id: string): Promise<void> {
 	if (!res.ok) throw new Error(await res.text().catch(() => res.statusText));
 }
 
+export type CoachReflectionResponse = {
+	prompt: string | null;
+	requestFeelingLog?: boolean;
+	trigger?: string;
+	categoryId?: string;
+	categoryName?: string;
+};
+
+export async function fetchCoachReflection(): Promise<CoachReflectionResponse> {
+	const res = await fetch(`${API_BASE}/api/coach/reflection`, {
+		headers: headers(),
+	});
+	if (!res.ok) throw new Error(await res.text().catch(() => res.statusText));
+	return res.json();
+}
+
+export async function postReflection(body: {
+	feelingKey: string;
+	reasonKey: string;
+	categoryId?: string | null;
+}): Promise<{ ok: boolean }> {
+	const res = await fetch(`${API_BASE}/api/coach/reflection`, {
+		method: "POST",
+		headers: headers(),
+		body: JSON.stringify(body),
+	});
+	if (!res.ok) throw new Error(await res.text().catch(() => res.statusText));
+	return res.json();
+}
+
+export async function fetchCoachReminder(
+	categoryId?: string | null,
+): Promise<{ reminder: string | null }> {
+	const sp = new URLSearchParams();
+	if (categoryId) sp.set("categoryId", categoryId);
+	const q = sp.toString();
+	const url = q
+		? `${API_BASE}/api/coach/reminder?${q}`
+		: `${API_BASE}/api/coach/reminder`;
+	const res = await fetch(url, { headers: headers() });
+	if (!res.ok) throw new Error(await res.text().catch(() => res.statusText));
+	return res.json();
+}
+
 export type BudgetLine = {
 	id: string;
 	name: string;

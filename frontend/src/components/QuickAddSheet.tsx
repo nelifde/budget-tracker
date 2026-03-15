@@ -3,7 +3,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { fetchCategories, postQuickExpense } from "@/lib/api";
+import {
+	fetchCategories,
+	fetchCoachReminder,
+	postQuickExpense,
+} from "@/lib/api";
 
 type Step = "amount" | "planned-impulsive" | "category";
 
@@ -16,6 +20,7 @@ export function QuickAddSheet({ open, onClose, onLogged }: Props) {
 		null,
 	);
 	const [sending, setSending] = useState(false);
+	const [reminderDismissed, setReminderDismissed] = useState(false);
 
 	const { data: categories = [] } = useQuery({
 		queryKey: ["categories"],
@@ -23,11 +28,20 @@ export function QuickAddSheet({ open, onClose, onLogged }: Props) {
 		enabled: open && step === "category",
 	});
 
+	const { data: reminderData } = useQuery({
+		queryKey: ["coach-reminder", open, step, spendType],
+		queryFn: () => fetchCoachReminder(),
+		enabled: open && step === "category" && spendType === "IMPULSIVE",
+	});
+	const reminderMessage = reminderData?.reminder ?? null;
+	const showReminder = !!reminderMessage && !reminderDismissed;
+
 	useEffect(() => {
 		if (open) {
 			setStep("amount");
 			setAmount("");
 			setSpendType(null);
+			setReminderDismissed(false);
 		}
 	}, [open]);
 
@@ -169,6 +183,20 @@ export function QuickAddSheet({ open, onClose, onLogged }: Props) {
 									exit={{ opacity: 0, y: -10 }}
 									className="flex flex-col"
 								>
+									{showReminder && (
+										<div className="mb-4 p-4 rounded-xl border border-[var(--accent-purple)] bg-[var(--accent-purple)]/10">
+											<p className="text-[var(--text-primary)] font-display text-sm leading-relaxed">
+												{reminderMessage}
+											</p>
+											<button
+												type="button"
+												onClick={() => setReminderDismissed(true)}
+												className="mt-2 text-[var(--accent-purple)] font-display font-bold text-sm min-tap"
+											>
+												Got it
+											</button>
+										</div>
+									)}
 									<p className="text-lg font-display font-bold text-[var(--text-primary)] mb-4">
 										Where did you spend? (optional)
 									</p>

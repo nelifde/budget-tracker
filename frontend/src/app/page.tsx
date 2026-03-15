@@ -57,6 +57,7 @@ export default function Home() {
 						onLogged={() => {
 							queryClient.invalidateQueries({ queryKey: ["safe-to-spend"] });
 							queryClient.invalidateQueries({ queryKey: ["transactions"] });
+							queryClient.invalidateQueries({ queryKey: ["coach-reflection"] });
 						}}
 					/>
 					<SettingsSheet

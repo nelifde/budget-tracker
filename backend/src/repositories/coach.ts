@@ -14,3 +14,15 @@ export async function recordShownPrompt(userId: string, promptKey: string): Prom
     data: { userId, promptKey },
   });
 }
+
+export async function getLastShownAtForPromptKey(
+  userId: string,
+  promptKey: string
+): Promise<Date | null> {
+  const last = await prisma.coachPrompt.findFirst({
+    where: { userId, promptKey },
+    orderBy: { shownAt: "desc" },
+    select: { shownAt: true },
+  });
+  return last?.shownAt ?? null;
+}
