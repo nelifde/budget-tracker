@@ -28,7 +28,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Pull down on the home screen to open the quick-add sheet (amount → Planned or Impulsive).
+Open [http://0.0.0.0:10000](http://0.0.0.0:10000). Pull down on the home screen to open the quick-add sheet (amount → Planned or Impulsive).
 
 ## Design specs
 

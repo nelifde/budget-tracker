@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Test reflection flow: 5+ impulsive in same category triggers feeling-log prompt.
 set -e
-API="${API_BASE:-http://localhost:4000}"
+API="${API_BASE:-http://0.0.0.0:10000}"
 USER_ID="test-reflection-$(date +%s)"
 H="Content-Type: application/json"
 X="x-user-id: $USER_ID"
