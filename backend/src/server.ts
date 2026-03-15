@@ -37,8 +37,8 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/budgets", budgetRoutes);
 
-const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
+const PORT = process.env.PORT || 10000;
+app.listen(Number(PORT), '0.0.0.0', () => {
   console.log(`Backend server listening on port ${PORT}`);
 });
 
