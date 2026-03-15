@@ -30,7 +30,7 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "3000:3000"
+      - "10000:10000"
     environment:
       NEXT_PUBLIC_API_URL: https://budget-tracker-3r9l.onrender.com
     depends_on:
