@@ -1,5 +1,5 @@
-const API_BASE =
-	process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+/** Same-origin /api via Next rewrites (see next.config.js). Override for a remote API (e.g. Vercel + separate host). */
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 const DEV_USER_KEY = "budget_tracker_dev_user_id";
 
