@@ -49,6 +49,21 @@ export function QuickAddSheet({ open, onClose, onLogged }: Props) {
 		if (amount && Number(amount) > 0) setStep("planned-impulsive");
 	};
 
+	const handleAmountKey = (key: string) => {
+		if (key === "⌫") {
+			setAmount((a) => a.slice(0, -1));
+			return;
+		}
+		if (key === ".") {
+			setAmount((a) => {
+				if (a.includes(".")) return a;
+				return a === "" ? "0." : `${a}.`;
+			});
+			return;
+		}
+		setAmount((a) => `${a}${key}`);
+	};
+
 	const handlePlannedImpulsive = (type: "PLANNED" | "IMPULSIVE") => {
 		setSpendType(type);
 		setStep("category");
@@ -106,7 +121,7 @@ export function QuickAddSheet({ open, onClose, onLogged }: Props) {
 										Amount
 									</p>
 									<p className="text-display-hero font-display text-[var(--text-primary)] mb-8">
-										{amount || "0"}.00
+										{amount || "0"}
 									</p>
 									<div className="grid grid-cols-3 gap-3 w-full max-w-[280px]">
 										{[
@@ -127,11 +142,7 @@ export function QuickAddSheet({ open, onClose, onLogged }: Props) {
 												key={key}
 												type="button"
 												className="min-tap rounded-xl bg-[var(--bg-secondary)] text-[var(--text-primary)] font-display text-2xl font-bold active:scale-95 transition"
-												onClick={() =>
-													key === "⌫"
-														? setAmount((a) => a.slice(0, -1))
-														: setAmount((a) => a + key)
-												}
+												onClick={() => handleAmountKey(key)}
 											>
 												{key}
 											</button>

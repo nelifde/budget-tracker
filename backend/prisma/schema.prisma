@@ -29,6 +29,7 @@ model User {
   transactions Transaction[]
   coachPrompts CoachPrompt[]
   reflections   Reflection[]
+  coachCheckIns CoachCheckIn[]
 }
 
 model Account {
@@ -119,6 +120,22 @@ model Reflection {
   reasonKey  String    // e.g. stressed, bored, with_friends, saw_deal, not_sure
   categoryId String?
   category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+}
+
+model CoachCheckIn {
+  id          String    @id @default(cuid())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  dueAt       DateTime
+  prompt      String
+  source      String    @default("fallback")
+  status      String    @default("due")
+  shownAt     DateTime?
+  dismissedAt DateTime?
+  completedAt DateTime?
+
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Goal {

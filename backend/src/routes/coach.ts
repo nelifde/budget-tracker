@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import * as coachService from "../services/coach";
+import * as checkInService from "../services/checkins";
 
 const router = Router();
 
@@ -59,6 +60,36 @@ router.get("/reminder", async (req: Request & { userId?: string }, res: Response
   const categoryId = (req.query.categoryId as string) || undefined;
   const reminder = await coachService.getReminderMessage(userId, categoryId);
   res.json({ reminder });
+});
+
+router.get("/check-in", async (req: Request & { userId?: string }, res: Response) => {
+  const userId = req.userId;
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const checkIn = await checkInService.getDueCheckIn(userId);
+  res.json({ checkIn });
+});
+
+router.post("/check-in/:id/dismiss", async (req: Request & { userId?: string }, res: Response) => {
+  const userId = req.userId;
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  await checkInService.dismissCheckIn(userId, req.params.id);
+  res.json({ ok: true });
+});
+
+router.post("/check-in/:id/complete", async (req: Request & { userId?: string }, res: Response) => {
+  const userId = req.userId;
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  await checkInService.completeCheckIn(userId, req.params.id);
+  res.json({ ok: true });
 });
 
 export default router;

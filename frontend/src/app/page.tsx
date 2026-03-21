@@ -58,6 +58,7 @@ export default function Home() {
 							queryClient.invalidateQueries({ queryKey: ["safe-to-spend"] });
 							queryClient.invalidateQueries({ queryKey: ["transactions"] });
 							queryClient.invalidateQueries({ queryKey: ["coach-reflection"] });
+							queryClient.invalidateQueries({ queryKey: ["coach-checkin"] });
 						}}
 					/>
 					<SettingsSheet

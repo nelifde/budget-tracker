@@ -30,6 +30,7 @@ export type SafeToSpendResult = {
 	xpPercent: number;
 	remainingInPeriod: number;
 	spentToday: number;
+	exceededDailySafeLimit: boolean;
 	monthlyBudget: number | null;
 	spentThisMonth: number;
 	currency: string;
@@ -227,4 +228,37 @@ export async function deleteBudgetLine(id: string): Promise<void> {
 		headers: headers(),
 	});
 	if (!res.ok) throw new Error(await res.text().catch(() => res.statusText));
+}
+
+export type CoachCheckIn = {
+	id: string;
+	prompt: string;
+	dueAt: string;
+	source: string;
+};
+
+export async function fetchCoachCheckIn(): Promise<{ checkIn: CoachCheckIn | null }> {
+	const res = await fetch(`${API_BASE}/api/coach/check-in`, {
+		headers: headers(),
+	});
+	if (!res.ok) throw new Error(await res.text().catch(() => res.statusText));
+	return res.json();
+}
+
+export async function dismissCoachCheckIn(id: string): Promise<{ ok: boolean }> {
+	const res = await fetch(`${API_BASE}/api/coach/check-in/${id}/dismiss`, {
+		method: "POST",
+		headers: headers(),
+	});
+	if (!res.ok) throw new Error(await res.text().catch(() => res.statusText));
+	return res.json();
+}
+
+export async function completeCoachCheckIn(id: string): Promise<{ ok: boolean }> {
+	const res = await fetch(`${API_BASE}/api/coach/check-in/${id}/complete`, {
+		method: "POST",
+		headers: headers(),
+	});
+	if (!res.ok) throw new Error(await res.text().catch(() => res.statusText));
+	return res.json();
 }

@@ -1,5 +1,4 @@
 import { prisma } from "../lib/db";
-import { SpendType } from "@prisma/client";
 
 function decimalToNumber(d: { toNumber?: () => number } | null | undefined): number {
   if (d == null) return 0;
@@ -54,7 +53,7 @@ export async function getImpulsiveCountSince(userId: string, since: Date): Promi
   return prisma.transaction.count({
     where: {
       userId,
-      spendType: SpendType.IMPULSIVE,
+      spendType: "IMPULSIVE",
       date: { gte: since },
     },
   });
@@ -66,27 +65,27 @@ export type CategoryImpulsiveCount = { categoryId: string; categoryName: string;
 export async function getImpulsiveCountByCategorySince(
   userId: string,
   since: Date,
-  minCount: number = 5
+  minCount: number = 3
 ): Promise<CategoryImpulsiveCount[]> {
   const rows = await prisma.transaction.groupBy({
     by: ["categoryId"],
     where: {
       userId,
-      spendType: SpendType.IMPULSIVE,
+      spendType: "IMPULSIVE",
       date: { gte: since },
       categoryId: { not: null },
     },
     _count: { id: true },
   });
-  const overThreshold = rows.filter((r) => r._count.id >= minCount);
+  const overThreshold = rows.filter((r: { _count: { id: number } }) => r._count.id >= minCount);
   if (overThreshold.length === 0) return [];
-  const categoryIds = overThreshold.map((r) => r.categoryId as string);
+  const categoryIds = overThreshold.map((r: { categoryId: string | null }) => r.categoryId as string);
   const categories = await prisma.category.findMany({
     where: { id: { in: categoryIds } },
     select: { id: true, name: true },
   });
-  const nameMap = new Map(categories.map((c) => [c.id, c.name]));
-  return overThreshold.map((r) => ({
+  const nameMap = new Map(categories.map((c: { id: string; name: string }) => [c.id, c.name]));
+  return overThreshold.map((r: { categoryId: string | null; _count: { id: number } }) => ({
     categoryId: r.categoryId as string,
     categoryName: nameMap.get(r.categoryId as string) ?? "Uncategorized",
     count: r._count.id,
@@ -105,7 +104,7 @@ export async function hadImpulsiveEveryDayLast7(userId: string): Promise<boolean
     const count = await prisma.transaction.count({
       where: {
         userId,
-        spendType: SpendType.IMPULSIVE,
+        spendType: "IMPULSIVE",
         date: { gte: d, lte: end },
       },
     });
@@ -119,7 +118,7 @@ export async function createTransaction(data: {
   accountId: string;
   amount: number;
   date: Date;
-  spendType: SpendType;
+  spendType: "PLANNED" | "IMPULSIVE";
   categoryId?: string | null;
   note?: string | null;
 }) {

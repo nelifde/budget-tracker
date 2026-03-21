@@ -4,7 +4,14 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDrag } from "@use-gesture/react";
 import { motion, useSpring } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import { fetchCoachReflection, fetchSafeToSpend } from "@/lib/api";
+import {
+	completeCoachCheckIn,
+	dismissCoachCheckIn,
+	fetchCoachCheckIn,
+	fetchCoachReflection,
+	fetchSafeToSpend,
+} from "@/lib/api";
+import { CoachCheckInBanner } from "./CoachCheckInBanner";
 import { CoachBanner } from "./CoachBanner";
 import { NudgeBanner } from "./NudgeBanner";
 import { ReflectionLogSheet } from "./ReflectionLogSheet";
@@ -60,6 +67,12 @@ export function HomeScreen({
 		queryFn: fetchCoachReflection,
 		enabled: !demoMode,
 	});
+	const { data: coachCheckInData } = useQuery({
+		queryKey: ["coach-checkin"],
+		queryFn: fetchCoachCheckIn,
+		enabled: !demoMode,
+		refetchInterval: 60_000,
+	});
 
 	const showReflectionSheet =
 		!demoMode &&
@@ -78,10 +91,26 @@ export function HomeScreen({
 		: coachData?.prompt && !coachData?.requestFeelingLog && !coachBannerDismissed
 			? coachData.prompt
 			: null;
+	const coachCheckIn = demoMode ? null : coachCheckInData?.checkIn ?? null;
+
+	useEffect(() => {
+		if (!coachCheckIn || typeof window === "undefined" || !("Notification" in window))
+			return;
+		const notifiedKey = "budget_tracker_last_checkin_notified";
+		const alreadyNotified = localStorage.getItem(notifiedKey);
+		if (alreadyNotified === coachCheckIn.id) return;
+		if (Notification.permission === "granted") {
+			new Notification("Budget check-in", { body: coachCheckIn.prompt });
+			localStorage.setItem(notifiedKey, coachCheckIn.id);
+		}
+	}, [coachCheckIn]);
 
 	const safeToSpend = demoMode ? 12.5 : (summary?.safeToSpendToday ?? null);
 	const xpPercent = demoMode ? 18 : (summary?.xpPercent ?? 100);
 	const currency = summary?.currency ?? "USD";
+	const exceededDailySafeLimit = demoMode
+		? false
+		: (summary?.exceededDailySafeLimit ?? false);
 
 	const ref = useRef<HTMLDivElement>(null);
 	const y = useSpring(0, { stiffness: 300, damping: 30 });
@@ -152,24 +181,37 @@ export function HomeScreen({
 							Reflections
 						</button>
 					</div>
-					<button
-						type="button"
-						onClick={() => {
-							setDemoMode((d) => !d);
-							if (!demoMode) {
-								setCoachMessage(MOCK_COACH);
-								setNudgeMessage(MOCK_NUDGE);
-							} else {
-								setCoachMessage(null);
-								setNudgeMessage(null);
-								setCoachBannerDismissed(false);
-								setReflectionDismissed(false);
-							}
-						}}
-						className="px-3 py-2 rounded-lg bg-[var(--bg-secondary)] text-[var(--text-secondary)] font-display text-xs font-bold min-tap"
-					>
-						{demoMode ? "Exit preview" : "Preview notifications"}
-					</button>
+					<div className="flex gap-2 flex-wrap justify-end">
+						<button
+							type="button"
+							onClick={() => {
+								setDemoMode((d) => !d);
+								if (!demoMode) {
+									setCoachMessage(MOCK_COACH);
+									setNudgeMessage(MOCK_NUDGE);
+								} else {
+									setCoachMessage(null);
+									setNudgeMessage(null);
+									setCoachBannerDismissed(false);
+									setReflectionDismissed(false);
+								}
+							}}
+							className="px-3 py-2 rounded-lg bg-[var(--bg-secondary)] text-[var(--text-secondary)] font-display text-xs font-bold min-tap"
+						>
+							{demoMode ? "Exit preview" : "Preview notifications"}
+						</button>
+						{typeof window !== "undefined" &&
+							"Notification" in window &&
+							Notification.permission !== "granted" && (
+								<button
+									type="button"
+									onClick={() => Notification.requestPermission()}
+									className="px-3 py-2 rounded-lg bg-[var(--bg-secondary)] text-[var(--text-secondary)] font-display text-xs font-bold min-tap"
+								>
+									Enable browser alerts
+								</button>
+							)}
+					</div>
 				</div>
 
 				<CoachBanner
@@ -177,6 +219,19 @@ export function HomeScreen({
 					onDismiss={() => {
 						if (demoMode) setCoachMessage(null);
 						else setCoachBannerDismissed(true);
+					}}
+				/>
+				<CoachCheckInBanner
+					message={coachCheckIn?.prompt ?? null}
+					onDismiss={async () => {
+						if (!coachCheckIn?.id) return;
+						await dismissCoachCheckIn(coachCheckIn.id);
+						queryClient.invalidateQueries({ queryKey: ["coach-checkin"] });
+					}}
+					onComplete={async () => {
+						if (!coachCheckIn?.id) return;
+						await completeCoachCheckIn(coachCheckIn.id);
+						queryClient.invalidateQueries({ queryKey: ["coach-checkin"] });
 					}}
 				/>
 				<ReflectionLogSheet
@@ -236,16 +291,19 @@ export function HomeScreen({
 							}}
 						/>
 					</div>
-					{isDanger && (
+					{exceededDailySafeLimit ? (
+						<p className="text-[var(--xp-bar-danger)] font-display text-sm font-bold mt-2">
+							You exceeded today's safe limit. Pause before the next spend.
+						</p>
+					) : isDanger ? (
 						<p className="text-[var(--xp-bar-danger)] font-display text-sm font-bold mt-2">
 							Budget low — slow down spending
 						</p>
-					)}
-					{isWarning && !isDanger && (
+					) : isWarning ? (
 						<p className="text-[var(--xp-bar-warning)] font-display text-sm mt-2">
 							Getting low
 						</p>
-					)}
+					) : null}
 					<p className="text-[var(--text-secondary)] text-sm mt-4 font-display">
 						Pull down to log an expense
 					</p>

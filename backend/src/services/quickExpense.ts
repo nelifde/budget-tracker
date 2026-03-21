@@ -1,4 +1,3 @@
-import { SpendType } from "@prisma/client";
 import { prisma } from "../lib/db";
 import * as transactionRepo from "../repositories/transaction";
 
@@ -26,7 +25,7 @@ export async function createQuickExpense(userId: string, input: QuickExpenseInpu
     throw new Error("No account available. Create an account first.");
   }
 
-  const spendType = input.spendType === "IMPULSIVE" ? SpendType.IMPULSIVE : SpendType.PLANNED;
+  const spendType = input.spendType === "IMPULSIVE" ? "IMPULSIVE" : "PLANNED";
 
   return transactionRepo.createTransaction({
     userId,

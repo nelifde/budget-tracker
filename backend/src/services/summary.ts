@@ -15,6 +15,7 @@ export type SafeToSpendResult = {
   xpPercent: number; // 0–100, remaining budget health
   remainingInPeriod: number;
   spentToday: number;
+  exceededDailySafeLimit: boolean;
   monthlyBudget: number | null;
   spentThisMonth: number;
 };
@@ -31,12 +32,14 @@ export async function getSafeToSpend(userId: string, asOf: Date): Promise<SafeTo
   const daysLeft = daysLeftInMonth(asOf);
   const safeToSpendToday = daysLeft > 0 ? remainingInPeriod / daysLeft : 0;
   const xpPercent = monthlyNum > 0 ? Math.min(100, (remainingInPeriod / monthlyNum) * 100) : 100;
+  const exceededDailySafeLimit = spentToday > safeToSpendToday;
 
   return {
     safeToSpendToday: Math.round(safeToSpendToday * 100) / 100,
     xpPercent: Math.round(xpPercent * 10) / 10,
     remainingInPeriod: Math.round(remainingInPeriod * 100) / 100,
     spentToday: Math.round(spentToday * 100) / 100,
+    exceededDailySafeLimit,
     monthlyBudget: monthlyNum > 0 ? monthlyNum : null,
     spentThisMonth: Math.round(spentThisMonth * 100) / 100,
   };

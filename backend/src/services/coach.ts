@@ -1,6 +1,7 @@
 import * as transactionRepo from "../repositories/transaction";
 import * as coachRepo from "../repositories/coach";
 import * as reflectionRepo from "../repositories/reflection";
+import { generateCoachPrompt } from "./aiCoach";
 
 export const FEELING_KEYS = [
   "fine",
@@ -43,14 +44,12 @@ export function getReasonLabel(key: string): string {
 }
 
 const REFLECTION_PROMPTS: Record<string, string> = {
-  impulsive_3_week:
+  impulsive_2_week:
     "You've logged a few impulsive spends this week. No judgment — want to look at what they had in common?",
   impulsive_5_week:
     "Impulsive spending's been up. Next time you're about to tap 'Impulsive', take one breath. You've got this.",
-  impulsive_1_today:
-    "One impulsive spend today. Anything that helped trigger it? (Just for you — no one else sees this.)",
-  impulsive_5_category:
-    "You've had 5 impulsive spends in {{categoryName}} recently. How did you feel about it?",
+  impulsive_3_category:
+    "You've had 3 impulsive spends in {{categoryName}} recently. How did you feel about it?",
   impulsive_full_week:
     "You've had impulsive spending every day this week. How are you feeling about it?",
 };
@@ -74,24 +73,29 @@ export async function getReflectionPrompt(userId: string): Promise<ReflectionPro
   sevenDaysAgo.setDate(now.getDate() - 7);
   sevenDaysAgo.setHours(0, 0, 0, 0);
 
-  // 1) 5+ impulsive in same category (last 7 days)
-  const categoriesOver5 = await transactionRepo.getImpulsiveCountByCategorySince(
+  // 1) 3+ impulsive in same category (last 7 days)
+  const categoriesOver3 = await transactionRepo.getImpulsiveCountByCategorySince(
     userId,
     sevenDaysAgo,
-    5
+    3
   );
-  if (categoriesOver5.length > 0) {
-    const top = categoriesOver5[0];
-    const promptKey = `impulsive_5_category_${top.categoryId}`;
+  if (categoriesOver3.length > 0) {
+    const top = categoriesOver3[0];
+    const promptKey = `impulsive_3_category_${top.categoryId}`;
     const lastShownAt = await coachRepo.getLastShownAtForPromptKey(userId, promptKey);
     if (!lastShownAt || Date.now() - lastShownAt.getTime() > THROTTLE_MS) {
       await coachRepo.recordShownPrompt(userId, promptKey);
-      const prompt = REFLECTION_PROMPTS.impulsive_5_category.replace(
+      const prompt = REFLECTION_PROMPTS.impulsive_3_category.replace(
         "{{categoryName}}",
         top.categoryName
       );
+      const generated = await generateCoachPrompt({
+        kind: "reflection",
+        context: `User has 3+ impulsive spends in category ${top.categoryName} over 7 days.`,
+        fallback: prompt,
+      });
       return {
-        prompt,
+        prompt: generated.prompt,
         requestFeelingLog: true,
         trigger: "same_category",
         categoryId: top.categoryId,
@@ -107,8 +111,13 @@ export async function getReflectionPrompt(userId: string): Promise<ReflectionPro
     const lastShownAt = await coachRepo.getLastShownAtForPromptKey(userId, promptKey);
     if (!lastShownAt || Date.now() - lastShownAt.getTime() > THROTTLE_MS) {
       await coachRepo.recordShownPrompt(userId, promptKey);
+      const generated = await generateCoachPrompt({
+        kind: "reflection",
+        context: "User has at least one impulsive spend in each of the last 7 days.",
+        fallback: REFLECTION_PROMPTS.impulsive_full_week,
+      });
       return {
-        prompt: REFLECTION_PROMPTS.impulsive_full_week,
+        prompt: generated.prompt,
         requestFeelingLog: true,
         trigger: "full_week_impulsive",
       };
@@ -117,15 +126,9 @@ export async function getReflectionPrompt(userId: string): Promise<ReflectionPro
 
   // 3) Text-only prompts (existing 1 today, 3 week, 5 week)
   const impulsiveThisWeek = await transactionRepo.getImpulsiveCountSince(userId, startOfWeek);
-  const impulsiveToday = await transactionRepo.getImpulsiveCountSince(
-    userId,
-    new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  );
-
   let chosenKey: string | null = null;
-  if (impulsiveToday >= 1) chosenKey = "impulsive_1_today";
-  else if (impulsiveThisWeek >= 5) chosenKey = "impulsive_5_week";
-  else if (impulsiveThisWeek >= 3) chosenKey = "impulsive_3_week";
+  if (impulsiveThisWeek >= 5) chosenKey = "impulsive_5_week";
+  else if (impulsiveThisWeek >= 2) chosenKey = "impulsive_2_week";
 
   if (!chosenKey || !REFLECTION_PROMPTS[chosenKey]) return null;
 
@@ -133,8 +136,13 @@ export async function getReflectionPrompt(userId: string): Promise<ReflectionPro
   if (lastShown === chosenKey) return null;
 
   await coachRepo.recordShownPrompt(userId, chosenKey);
+  const generated = await generateCoachPrompt({
+    kind: "reflection",
+    context: `User has weekly impulsive count at threshold key ${chosenKey}.`,
+    fallback: REFLECTION_PROMPTS[chosenKey],
+  });
   return {
-    prompt: REFLECTION_PROMPTS[chosenKey],
+    prompt: generated.prompt,
     trigger: "periodic",
   };
 }
@@ -175,5 +183,11 @@ export async function getReminderMessage(
   if (!r) return null;
   const feeling = getFeelingLabel(r.feelingKey);
   const reason = getReasonLabel(r.reasonKey);
-  return `Last time you said you felt ${feeling.toLowerCase()} because you were ${reason.toLowerCase()}. Take a breath — you've got this.`;
+  const fallback = `Last time you said you felt ${feeling.toLowerCase()} because you were ${reason.toLowerCase()}. Take a breath — you've got this.`;
+  const generated = await generateCoachPrompt({
+    kind: "reminder",
+    context: `Last reflection feeling ${feeling} and reason ${reason}.`,
+    fallback,
+  });
+  return generated.prompt;
 }

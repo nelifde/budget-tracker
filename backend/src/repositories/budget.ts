@@ -23,7 +23,10 @@ export async function getBudgetsForMonth(userId: string, year: number, month: nu
 
 export async function getTotalForMonth(userId: string, year: number, month: number): Promise<number> {
   const budgets = await getBudgetsForMonth(userId, year, month);
-  const sum = budgets.reduce((acc, b) => acc + Number(b.amount), 0);
+  let sum = 0;
+  for (const budget of budgets) {
+    sum += Number(budget.amount);
+  }
   return Math.round(sum * 100) / 100;
 }
 
