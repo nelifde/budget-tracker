@@ -1,4 +1,5 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://budget-tracker-3r9l.onrender.com";
+const API_BASE =
+	process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
 const DEV_USER_KEY = "budget_tracker_dev_user_id";
 

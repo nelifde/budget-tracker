@@ -25,10 +25,11 @@ Dev auth: send `x-user-id: <cuid>` (and create a User in DB) or use a real JWT.
 ```bash
 cd frontend
 npm install
+cp .env.example .env.local   # optional; default API is http://localhost:4000
 npm run dev
 ```
 
-Open [http://0.0.0.0:10000](http://0.0.0.0:10000). Pull down on the home screen to open the quick-add sheet (amount → Planned or Impulsive).
+Open [http://localhost:3000](http://localhost:3000) (default for `next dev`). Ensure the backend is running (default [http://localhost:4000](http://localhost:4000)); override with `NEXT_PUBLIC_API_URL` in `frontend/.env.local` if needed. Pull down on the home screen to open the quick-add sheet (amount → Planned or Impulsive).
 
 ## Design specs
 
